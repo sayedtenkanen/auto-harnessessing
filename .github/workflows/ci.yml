@@ -5,12 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "0 8 * * 1"  # Weekly Monday 08:00 UTC
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,11 +25,29 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      # Pinned to match pyproject.toml lower bounds; update intentionally.
-      - run: pip install "ruff==0.11.6" "mypy==1.15.0" "pydantic>=2.0"
-      - run: ruff check src/ tests/
-      - run: ruff format --check src/ tests/
-      - run: mypy src/ --ignore-missing-imports
+      - run: pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - name: ruff check
+        id: check
+        run: ruff check src/ tests/
+      - name: ruff format
+        id: format
+        run: ruff format --check src/ tests/
+      - name: mypy
+        id: mypy
+        run: mypy src/ --ignore-missing-imports
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Lint"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+            echo "| ruff check | ${{ steps.check.outcome || 'skipped' }} |"
+            echo "| ruff format | ${{ steps.format.outcome || 'skipped' }} |"
+            echo "| mypy | ${{ steps.mypy.outcome || 'skipped' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   test:
     runs-on: ubuntu-latest
@@ -38,8 +58,31 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - run: pip install --upgrade pip
       - run: pip install -e ".[dev]"
-      - run: pytest tests/ -v --tb=short --cov=autoharness --cov-report=term-missing
+      - name: Run tests
+        id: tests
+        run: |
+          pytest tests/ -v --tb=short \
+            --cov=autoharness \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Tests"
+            echo ""
+            echo "Result: ${{ steps.tests.outcome }}"
+            echo ""
+            echo "Coverage report uploaded as artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   security:
     runs-on: ubuntu-latest
@@ -50,13 +93,37 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install "bandit[toml]>=1.8.0" "safety>=3.0"
+      - run: pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - name: Install shellcheck and actionlint
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          # actionlint
+          curl -sL "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz" \
+            | tar xz -C /usr/local/bin actionlint
+      - name: Run actionlint
+        id: actionlint
+        run: actionlint .github/workflows/ci.yml
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install shellcheck
-        run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
       - name: Run shellcheck on scripts
+        id: shellcheck
         run: shellcheck scripts/*.sh
       - name: Run security scan
+        id: security_scan
         run: bash scripts/security-scan.sh --quiet
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Security"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+            echo "| actionlint | ${{ steps.actionlint.outcome }} |"
+            echo "| gitleaks | ${{ steps.gitleaks.outcome }} |"
+            echo "| shellcheck | ${{ steps.shellcheck.outcome }} |"
+            echo "| security scan | ${{ steps.security_scan.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
