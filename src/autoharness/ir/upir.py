@@ -41,7 +41,7 @@ class UPIR(BaseModel):
     model_config = {"populate_by_name": True}
 
     @property
-    def schema(self) -> str:
+    def schema_name(self) -> str:
         return self.ir_schema
 
     @model_validator(mode="after")

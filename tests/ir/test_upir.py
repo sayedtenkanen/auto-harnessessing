@@ -45,7 +45,7 @@ class TestUPIRConstruction:
             harness_table={},
             skill_table={},
         )
-        assert upir.schema == "typed-executable-graph"
+        assert upir.schema_name == "typed-executable-graph"
 
     def test_upir_entry_must_exist_in_nodes(self):
         with pytest.raises(ValidationError):
