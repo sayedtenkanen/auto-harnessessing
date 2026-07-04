@@ -7,7 +7,7 @@ class SeedStream:
     """Deterministic seed stream — no global random state."""
 
     def __init__(self, seed: int) -> None:
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # nosec B311
         self._current: int = seed
 
     def next(self) -> int:

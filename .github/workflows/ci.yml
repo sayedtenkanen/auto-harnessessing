@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install bandit safety
+      - run: pip install bandit[toml] safety
       - name: Install gitleaks
         run: |
           GITLEAKS_VERSION="8.18.4"

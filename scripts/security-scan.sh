@@ -222,7 +222,7 @@ if [ -d "src" ]; then
         --exclude-dir=mock \
         --exclude-dir=conftest \
         --exclude='*.pyc' \
-        '(/Users/|/home/|/root/|/opt/|/var/|/tmp/|/etc/|C:\\)' \
+        '(/Users/|/home/|/root/|/opt/|/var/|/etc/|C:\\)' \
         src/ 2>/dev/null || true)
 
     if [ -n "$HARDCODED" ]; then

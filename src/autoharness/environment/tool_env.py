@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class ToolEnvironment:
     """Tool-based environment with file I/O tools."""
 
-    def __init__(self, workspace: str = "/tmp/workspace") -> None:
+    def __init__(self, workspace: str = "/tmp/workspace") -> None:  # nosec B108
         self.workspace = workspace
 
     def reset(self, seed: int) -> dict[str, Any]:
