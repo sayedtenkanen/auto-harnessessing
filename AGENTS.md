@@ -1,0 +1,134 @@
+# AutoHarness
+
+Probabilistic program compiler that searches over a unified intermediate representation (UPIR), executes it in sandboxed environments, and compiles successful behaviors into reusable executable subprograms.
+
+## Quick reference
+
+- **Plan:** `PLAN.md` (full spec, 1100+ lines)
+- **Blueprint:** `BLUEPRINT.md` (original v4 reference)
+- **Python:** 3.10+
+- **LLM:** Ollama local (`gemma4:12b-mlx`) at `http://localhost:11434/v1`
+
+## Commands
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Run tests
+pytest tests/
+
+# Run tests for a specific slice
+pytest tests/ir/           # Slice 1 IR types
+pytest tests/runtime/      # Slice 1 VM
+pytest tests/sandbox/      # Slice 2
+pytest tests/trace/        # Slice 3
+pytest tests/reward/       # Slice 4
+pytest tests/search/       # Slice 5
+pytest tests/intelligence/ # Slice 6+
+
+# Lint
+ruff check src/ tests/
+
+# Format
+ruff format src/ tests/
+
+# Type check
+mypy src/
+
+# Coverage
+pytest --cov=autoharness --cov-report=term-missing
+
+# Security — full scan
+bash scripts/security-scan.sh
+
+# Security — secrets detection
+gitleaks detect --source .
+
+# Security — Python static analysis
+bandit -r src/autoharness -c pyproject.toml
+
+# Security — dependency vulnerabilities
+safety check
+```
+
+## TDD workflow
+
+1. **Red:** Write a failing test
+2. **Green:** Write minimum code to pass
+3. **Refactor:** Clean up while green
+
+Two commits per cycle:
+```
+test(scope): add failing tests for X
+feat(scope): implement X to pass tests
+```
+
+## Project structure
+
+```
+src/autoharness/
+├── ir/           # UPIR + Harness IR types (Slice 1)
+├── runtime/      # VM execution engine (Slice 1)
+├── environment/  # Pluggable env protocol (Slice 1)
+├── sandbox/      # Safety + isolation (Slice 2)
+├── trace/        # Trace IR system (Slice 3)
+├── reward/       # Reward engine (Slice 4)
+├── search/       # Thompson tree search (Slice 5)
+├── intelligence/ # LLM integration (Slice 6)
+├── skills/       # Skill system (Slice 7-9)
+├── memory/       # Persistence (Slice 10)
+└── compiler/     # Compiler passes (Slice 12-15)
+```
+
+## Current status
+
+- [x] Plan complete (PLAN.md)
+- [ ] Slice 1: UPIR VM + Environment Protocol
+- [ ] Slice 2: Sandbox + Safety
+- [ ] Slice 3: Trace IR
+- [ ] Slice 4: Reward Engine
+- [ ] Slice 5: Thompson Tree Search
+- [ ] Slice 6: Refiner + Critic Loop
+- [ ] Slice 7-10: Skills + Memory
+- [ ] Slice 11-16: Compiler layer
+
+## Branching
+
+Branch per slice. Merge to main only when all tests in that slice are green.
+
+```
+git checkout -b slice/1-ir-types
+# ... work ...
+pytest tests/ir/  # must pass
+git add . && git commit -m "test(ir): add UPIR tests"
+# ... implement ...
+pytest tests/ir/  # must pass
+git commit -m "feat(ir): implement UPIR models"
+git checkout main && git merge slice/1-ir-types
+```
+
+## Conventions
+
+- **Test naming:** `test_<thing>_<scenario>`
+- **Lint:** ruff (line-length 100)
+- **Types:** mypy strict mode
+- **Pre-commit:** ruff + mypy + gitleaks + bandit hooks enabled
+
+## Security
+
+Pre-commit hooks run automatically on every commit:
+- **gitleaks** — detects secrets, API keys, tokens in code
+- **bandit** — Python static security analysis (finds common vulnerabilities)
+
+Run full security scan manually:
+```bash
+bash scripts/security-scan.sh
+```
+
+**Security rules:**
+- Never commit API keys, tokens, or passwords
+- All harness code runs sandboxed (no network, no filesystem outside workspace)
+- Harness code cannot use try/except (must surface errors explicitly)
+- All tool calls have timeouts (10s default)
+- Path traversal blocked via `os.path.realpath()` check
