@@ -84,9 +84,7 @@ class TestEndToEndThompsonSearch:
 
     def test_search_prefers_good_harness(self) -> None:
         good_branch = Branch(harness=Harness(kind="action_filter", code="result = 'ok'"))
-        bad_branch = Branch(
-            harness=Harness(kind="action_filter", code="raise ValueError('bad')")
-        )
+        bad_branch = Branch(harness=Harness(kind="action_filter", code="raise ValueError('bad')"))
 
         def real_rollout(h: Harness, seed: int) -> tuple[float, bool]:
             upir = UPIR(
