@@ -1,0 +1,20 @@
+{
+  "history": [
+    {
+      "commit": "71f7cef",
+      "commit_msg": "style(vm): fix import sorting",
+      "timestamp": "2026-07-05T17:29:45Z",
+      "ruff_check": 0,
+      "ruff_format": 0,
+      "mypy": 0,
+      "pytest_passed": 120,
+      "pytest_failed": 0,
+      "total_violations": 0
+    }
+  ],
+  "trends": {
+    "total_commits": 1,
+    "clean_commits": 1,
+    "violation_rate": "0%"
+  }
+}
