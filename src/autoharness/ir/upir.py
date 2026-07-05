@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 NodeID = str
 HarnessID = str
@@ -33,6 +33,12 @@ class UPIR(BaseModel):
     ir_schema: str = Field(default="typed-executable-graph", alias="schema")
 
     model_config = {"populate_by_name": True}
+
+    @field_validator("nodes", mode="before")
+    @classmethod
+    def coerce_nodes(cls, v: dict[str, Any]) -> dict[str, UPIRNode]:
+        """Allow dict values to be coerced to UPIRNode."""
+        return {k: v if isinstance(v, UPIRNode) else UPIRNode.model_validate(v) for k, v in v.items()}
 
     @property
     def schema_name(self) -> str:
