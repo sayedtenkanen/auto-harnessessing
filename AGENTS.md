@@ -104,7 +104,7 @@ src/autoharness/
 - [x] Slice 5: Thompson Tree Search
 - [x] Slice 6: Refiner + Critic Loop
 - [x] Slice 7: Skill Extraction
-- [ ] Slice 8-10: Skill Execution, Pruning, Memory
+- [x] Slice 8-10: Skill Execution, Pruning, Memory
 - [ ] Slice 11-16: Compiler layer
 
 ## CI/CD
