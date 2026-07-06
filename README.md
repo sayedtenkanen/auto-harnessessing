@@ -15,7 +15,7 @@ Based on [arXiv:2603.03329](https://arxiv.org/abs/2603.03329) (Lou et al., Googl
 | 5 | Thompson Tree Search | done |
 | 6 | Refiner + Critic Loop | done |
 | 7 | Skill Extraction | done |
-| 8-10 | Skill Execution, Pruning, Memory | planned |
+| 8-10 | Skill Execution, Pruning, Memory | done |
 | 11-16 | Compiler layer | planned |
 
 ## Install
@@ -89,8 +89,8 @@ src/autoharness/
 ├── reward/          # Reward engine
 ├── search/          # Thompson tree search
 ├── intelligence/    # LLM client, critic, refiner
-├── skills/          # Skill extraction
-├── memory/          # (planned) Persistence
+├── skills/          # Skill extraction, execution, pruning
+├── memory/          # Persistent episodic + skill memory
 └── compiler/        # (planned) Compiler passes
 ```
 
