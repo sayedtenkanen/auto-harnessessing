@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -40,7 +40,7 @@ class OpenAIChatClient:
 
     def chat(self, prompt: str) -> str:
         """Send a prompt to the OpenAI API and return the response text."""
-        messages: list[dict[str, str]] = []
+        messages: list[dict[str, Any]] = []
         if self._system_prompt:
             messages.append({"role": "system", "content": self._system_prompt})
         messages.append({"role": "user", "content": prompt})
