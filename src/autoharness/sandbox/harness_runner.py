@@ -8,6 +8,10 @@ from typing import Any
 from autoharness.sandbox.guardrails import check_harness_code
 
 # Restricted builtins: only safe, common names are available.
+# Reflection builtins (getattr, hasattr, type, super, property) are
+# excluded to reduce the available reflection mechanisms and attack surface.
+# This does not fully prevent access to attributes like __class__/__bases__/__subclasses__
+# via normal attribute access (e.g., obj.__class__.__subclasses__()).
 _RESTRICTED_BUILTINS = {
     "abs": abs,
     "bool": bool,
@@ -18,8 +22,6 @@ _RESTRICTED_BUILTINS = {
     "float": float,
     "format": format,
     "frozenset": frozenset,
-    "getattr": getattr,
-    "hasattr": hasattr,
     "hash": hash,
     "hex": hex,
     "int": int,
@@ -36,7 +38,6 @@ _RESTRICTED_BUILTINS = {
     "ord": ord,
     "pow": pow,
     "print": print,
-    "property": property,
     "range": range,
     "repr": repr,
     "reversed": reversed,
@@ -46,9 +47,7 @@ _RESTRICTED_BUILTINS = {
     "sorted": sorted,
     "str": str,
     "sum": sum,
-    "super": super,
     "tuple": tuple,
-    "type": type,
     "Exception": Exception,
     "RuntimeError": RuntimeError,
     "ValueError": ValueError,
@@ -90,8 +89,8 @@ def run_harness(
     def _target() -> None:
         nonlocal raised
         try:
-            exec(code, sandbox_globals)  # noqa: S102  # nosec B102
-        except Exception as e:  # noqa: BLE001
+            exec(code, sandbox_globals)  # nosec B102
+        except Exception as e:
             raised = e
 
     thread = threading.Thread(target=_target, daemon=True)
