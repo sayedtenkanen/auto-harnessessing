@@ -1,8 +1,8 @@
 # AutoHarness
 
-Probabilistic program compiler that searches over a unified intermediate representation (UPIR), executes it in sandboxed environments, and compiles successful behaviors into reusable executable subprograms.
+Probabilistic program compiler that searches over a unified intermediate representation (UPIR), executes it in sandboxed environments, and extracts successful behaviors into reusable executable subprograms.
 
-Based on [arXiv:2603.03329](https://arxiv.org/abs/2603.03329) (Lou et al., Google DeepMind, 2026).
+Inspired by [arXiv:2603.03329](https://arxiv.org/abs/2603.03329) (Lou et al., Google DeepMind, 2026).
 
 ## Status
 
@@ -15,7 +15,7 @@ Based on [arXiv:2603.03329](https://arxiv.org/abs/2603.03329) (Lou et al., Googl
 | 5 | Thompson Tree Search | done |
 | 6 | Refiner + Critic Loop | done |
 | 7 | Skill Extraction | done |
-| 8-10 | Skill Execution, Pruning, Memory | planned |
+| 8-10 | Skill Execution, Pruning, Memory | done |
 | 11-16 | Compiler layer | planned |
 
 ## Install
@@ -75,7 +75,7 @@ UPIR (Unified Policy IR)
        └─ Trace → Reward → Thompson Search → Refiner/Critic
 ```
 
-**Core loop:** Execute → Trace → Score → Search → Refine → Compile
+**Core loop:** Execute → Trace → Score → Search → Refine → Compile *(compile stage planned, slices 11-16)*
 
 ## Project structure
 
@@ -89,8 +89,8 @@ src/autoharness/
 ├── reward/          # Reward engine
 ├── search/          # Thompson tree search
 ├── intelligence/    # LLM client, critic, refiner
-├── skills/          # Skill extraction
-├── memory/          # (planned) Persistence
+├── skills/          # Skill extraction, execution, pruning
+├── memory/          # Persistent episodic + skill memory
 └── compiler/        # (planned) Compiler passes
 ```
 
@@ -118,4 +118,4 @@ bash scripts/ci-status.sh
 
 ## License
 
-Research use only.
+MIT — see [LICENSE](LICENSE).
