@@ -40,7 +40,20 @@ class SkillExtractor:
         if len(events) < 2:
             return []
 
-        node_ids = [e.node_id if hasattr(e, "node_id") else e.get("node_id", "") for e in events]
+        node_ids: list[str] = []
+        for e in events:
+            if hasattr(e, "node_id"):
+                node_id = e.node_id
+            elif isinstance(e, dict):
+                node_id = e.get("node_id")
+            else:
+                node_id = None
+            if not node_id:
+                continue
+            node_ids.append(node_id)
+
+        if len(node_ids) < 2:
+            return []
         n = len(node_ids)
         patterns: list[Pattern] = []
 
@@ -101,27 +114,38 @@ class SkillExtractor:
         return patterns
 
     def _dedupe_subsequences(self, patterns: list[Pattern]) -> list[Pattern]:
-        """Remove patterns that are contiguous subsequences of longer patterns."""
+        """Remove patterns that are contiguous subsequences of longer patterns.
+
+        Indexes patterns by length to avoid redundant subsequence checks.
+        A pattern of length L is only compared against kept patterns of length > L.
+        """
         if not patterns:
             return patterns
 
-        # Sort by length descending for comparison
-        by_length = sorted(patterns, key=lambda p: -len(p.node_ids))
+        # Group patterns by length for efficient lookup
+        by_length: dict[int, list[Pattern]] = {}
+        for pat in patterns:
+            ln = len(pat.node_ids)
+            by_length.setdefault(ln, []).append(pat)
+
         kept: list[Pattern] = []
         kept_keys: set[tuple[str, ...]] = set()
 
-        for pat in by_length:
-            pat_key = tuple(pat.node_ids)
-            is_sub = False
-            for existing_key in kept_keys:
-                if len(existing_key) > len(pat_key) and pat_key in _subsequences(
-                    existing_key, len(pat_key)
-                ):
-                    is_sub = True
-                    break
-            if not is_sub:
-                kept.append(pat)
-                kept_keys.add(pat_key)
+        # Process longest patterns first — they are always kept
+        for length in sorted(by_length, reverse=True):
+            for pat in by_length[length]:
+                pat_key = tuple(pat.node_ids)
+                is_sub = False
+                # Only compare against kept patterns strictly longer than this one
+                for existing_key in kept_keys:
+                    if len(existing_key) > length and pat_key in _subsequences(
+                        existing_key, length
+                    ):
+                        is_sub = True
+                        break
+                if not is_sub:
+                    kept.append(pat)
+                    kept_keys.add(pat_key)
 
         return kept
 

@@ -157,7 +157,12 @@ def test_reuse_skills_loads_persisted_skills(tmp_path: Path) -> None:
 
 
 def test_llm_free_replay_saves_llm_calls(tmp_path: Path) -> None:
-    """Skills with no think/branch nodes skip LLM calls, counting llm_calls_saved."""
+    """Skills with no think/branch nodes skip LLM calls, counting llm_calls_saved.
+
+    The variant has harness_call + skill_call (no think/branch), so:
+    - llm_calls == 0 (no think/branch events in the trace)
+    - llm_calls_saved >= 1 (skill_call to a deterministic skill)
+    """
     from autoharness.ir.upir import UPIR, UPIRNode
 
     # A skill with only act nodes (deterministic) — no think/branch

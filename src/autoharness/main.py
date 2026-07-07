@@ -114,9 +114,10 @@ def run_autoharness(
         v = value(r, env_kind=env_kind)
         all_rewards.append(v)
         failed = any(e.get("verdict") == "error" for e in trace)
-        # Count LLM calls: each think/branch in the variant's main graph costs 1
-        if _has_llm_nodes(upir):
-            llm_calls += 1
+        # Count actual LLM calls from think/branch events in the trace
+        for event in trace:
+            if event.get("kind") in ("think", "branch"):
+                llm_calls += 1
         # Count LLM savings: skill_calls to deterministic skills (no think/branch)
         for event in trace:
             if event.get("kind") == "skill_call":
@@ -149,9 +150,8 @@ def run_autoharness(
 
     # 5. Persist episodes to memory
     episodes_saved = 0
-    for i, trace in enumerate(all_traces):
-        r = score_trace(trace, env_kind=env_kind)
-        store.save_episode(f"run_{i}", trace, reward=value(r, env_kind=env_kind))
+    for i, (trace, reward) in enumerate(zip(all_traces, all_rewards, strict=True)):
+        store.save_episode(f"run_{i}", trace, reward=reward)
         episodes_saved += 1
 
     best_name = result.best_branch.harness.code if result.best_branch else None
