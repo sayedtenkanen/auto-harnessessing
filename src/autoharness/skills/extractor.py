@@ -40,7 +40,7 @@ class SkillExtractor:
         if len(events) < 2:
             return []
 
-        node_ids = [e.node_id for e in events]
+        node_ids = [e.node_id if hasattr(e, "node_id") else e.get("node_id", "") for e in events]
         n = len(node_ids)
         patterns: list[Pattern] = []
 
