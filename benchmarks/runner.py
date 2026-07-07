@@ -114,7 +114,6 @@ def _run_baseline_phase(
     tasks: list[Any],
     data_dir: str,
     max_iterations: int,
-    llm_override: Any | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Run baseline variants to extract and persist skills.
 
@@ -132,12 +131,11 @@ def _run_baseline_phase(
         for skill_id, skill_upir in task.training_skills.items():
             store.save_skill(skill_id, skill_upir)
 
-        llm = llm_override if llm_override is not None else task.llm
         last_result: dict[str, Any] = {}
         for seed in task.seeds:
             last_result = run_autoharness(
                 variants=task.baseline_variants,
-                llm=llm,
+                llm=task.llm,
                 seed=seed,
                 max_search_iterations=max_iterations,
                 max_total_failures=task.max_total_failures,
@@ -154,7 +152,6 @@ def _run_test_phase(
     data_dir: str,
     variant_type: str,
     max_iterations: int,
-    llm_override: Any | None = None,
 ) -> list[TaskResult]:
     """Run test phase: baseline or reuse variants across all seeds.
 
@@ -164,7 +161,6 @@ def _run_test_phase(
 
     for task in tasks:
         variants = task.baseline_variants if variant_type == "baseline" else task.reuse_variants
-        llm = llm_override if llm_override is not None else task.llm
         task_result = TaskResult(
             task_name=task.name,
             category=task.category,
@@ -177,7 +173,7 @@ def _run_test_phase(
             task_dir = str(Path(data_dir) / "training" / task.name)
             result = run_autoharness(
                 variants=variants,
-                llm=llm,
+                llm=task.llm,
                 seed=seed,
                 max_search_iterations=max_iterations,
                 max_total_failures=task.max_total_failures,
@@ -208,7 +204,6 @@ def run_benchmark(
     data_dir_prefix: str | None = None,
     categories: list[str] | None = None,
     max_iterations: int = 15,
-    llm_override: Any | None = None,
 ) -> BenchmarkSuite:
     """Run full benchmark: training phase → test phase (baseline vs reuse).
 
@@ -217,7 +212,6 @@ def run_benchmark(
         data_dir_prefix: Base directory for MemoryStore data. Uses tempdir if None.
         categories: If set, only run tasks in these categories.
         max_iterations: Max Thompson search iterations per run.
-        llm_override: If set, use this LLM for all tasks instead of task.llm.
 
     Returns:
         BenchmarkSuite with baseline and reuse results for all tasks.
@@ -235,16 +229,16 @@ def run_benchmark(
     try:
         # Phase 1: Training — run baseline variants to extract skills
         print("Phase 1: Training (extracting skills from baseline variants)...")
-        _run_baseline_phase(filtered, base, max_iterations, llm_override)
+        _run_baseline_phase(filtered, base, max_iterations)
 
         # Phase 2a: Test baseline variants (no reuse)
         print("Phase 2a: Testing baseline variants (no skill reuse)...")
-        baseline_results = _run_test_phase(filtered, base, "baseline", max_iterations, llm_override)
+        baseline_results = _run_test_phase(filtered, base, "baseline", max_iterations)
         suite.task_results.extend(baseline_results)
 
         # Phase 2b: Test reuse variants (with persisted skills)
         print("Phase 2b: Testing reuse variants (with skill reuse)...")
-        reuse_results = _run_test_phase(filtered, base, "reuse", max_iterations, llm_override)
+        reuse_results = _run_test_phase(filtered, base, "reuse", max_iterations)
         suite.task_results.extend(reuse_results)
 
     finally:
