@@ -367,3 +367,24 @@ class TestVMProbabilisticBranch:
                 true_count += 1
         # With p=0.5 and 100 seeds, expect roughly 50 true — not all same
         assert 20 < true_count < 80, f"Expected ~50 true, got {true_count}"
+
+    def test_branch_probability_out_of_range_raises(self) -> None:
+        """Branch with probability outside [0.0, 1.0] raises ValueError."""
+        import pytest
+
+        upir = UPIR(
+            entry="n1",
+            nodes={
+                "n1": {
+                    "kind": "branch",
+                    "node_id": "n1",
+                    "probability": 1.5,
+                },
+                "n2": {"kind": "act", "node_id": "n2"},
+            },
+            edges=[],
+            harness_table={},
+            skill_table={},
+        )
+        with pytest.raises(ValueError, match="Branch probability must be in"):
+            VM(upir=upir, llm=FakeLLM(), seed=42).run()

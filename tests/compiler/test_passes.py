@@ -5,7 +5,7 @@ from tracedge.compiler.passes import (
     dead_branch_eliminate,
     unreachable_prune,
 )
-from tracedge.ir.upir import UPIR, UPIRNode
+from tracedge.ir.upir import UPIR, Edge, UPIRNode
 
 
 def _get(upir: UPIR, nid: str) -> UPIRNode:
@@ -84,7 +84,24 @@ class TestConstantFold:
             skill_table={},
         )
         result = constant_fold(upir)
-        assert _get(result, "n1").kind != "branch"
+
+        # Entry node should remain the same.
+        assert result.entry == "n1"
+
+        # Branch should be folded to act.
+        n1 = _get(result, "n1")
+        assert n1.kind == "act"
+
+        # Branch successors should be cleared on the folded node.
+        assert n1.true_next == ""  # type: ignore[attr-defined]
+        assert n1.false_next == ""  # type: ignore[attr-defined]
+
+        # A sequential edge from n1 to the original true_next should exist.
+        assert any(
+            e.from_ == "n1" and e.to == "n2" and e.kind == "sequential" for e in result.edges
+        )
+        # No edge from n1 to the original false_next.
+        assert not any(e.from_ == "n1" and e.to == "n3" for e in result.edges)
 
     def test_folds_always_false_branch(self) -> None:
         """Branch with condition 'False' becomes sequential to false_next."""
@@ -106,7 +123,24 @@ class TestConstantFold:
             skill_table={},
         )
         result = constant_fold(upir)
-        assert _get(result, "n1").kind != "branch"
+
+        # Entry node should remain the same.
+        assert result.entry == "n1"
+
+        # Branch should be folded to act.
+        n1 = _get(result, "n1")
+        assert n1.kind == "act"
+
+        # Branch successors should be cleared on the folded node.
+        assert n1.true_next == ""  # type: ignore[attr-defined]
+        assert n1.false_next == ""  # type: ignore[attr-defined]
+
+        # A sequential edge from n1 to the original false_next should exist.
+        assert any(
+            e.from_ == "n1" and e.to == "n3" and e.kind == "sequential" for e in result.edges
+        )
+        # No edge from n1 to the original true_next.
+        assert not any(e.from_ == "n1" and e.to == "n2" for e in result.edges)
 
     def test_preserves_dynamic_condition(self) -> None:
         """Branch with non-constant condition is preserved."""
@@ -151,8 +185,6 @@ class TestUnreachablePrune:
 
     def test_preserves_reachable_chain(self) -> None:
         """Nodes in a chain from entry are all preserved."""
-        from tracedge.ir.upir import Edge
-
         upir = UPIR(
             entry="n1",
             nodes={

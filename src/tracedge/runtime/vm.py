@@ -183,6 +183,9 @@ class VM:
 
         # Probabilistic branch: sample from Bernoulli, skip LLM
         if probability is not None:
+            if not 0.0 <= probability <= 1.0:
+                raise ValueError(f"Branch probability must be in [0.0, 1.0], got {probability}")
+
             import random
 
             rng = random.Random(self.seed_stream.next())  # nosec B311
