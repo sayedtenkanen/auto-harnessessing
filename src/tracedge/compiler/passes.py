@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import deque
+
 from tracedge.ir.upir import UPIR, Edge, UPIRNode
 
 
@@ -76,8 +78,20 @@ def unreachable_prune(upir: UPIR) -> UPIR:
 def insert_phi_nodes(upir: UPIR) -> UPIR:
     """Insert phi nodes at convergence points (nodes with multiple incoming edges).
 
-    For each convergence point, finds the nearest branch ancestor and inserts
-    a phi node that can merge values from the divergent paths.
+    For each convergence point, finds the nearest branch ancestor via BFS and
+    inserts a phi node.  The phi's ``values`` dict maps ``"true"`` → the
+    branch's ``true_next`` and ``"false"`` → the branch's ``false_next``, so
+    downstream nodes can read ``{phi_<id>.selected}`` via template resolution.
+
+    Important: this pass also updates any predecessor branch node whose
+    ``true_next``/````false_next`` attribute points at the convergence target,
+    rerouting it to the inserted phi.  Without this, the VM would bypass the
+    phi via attribute-based control flow (``_step_branch`` reads attributes,
+    not edges).
+
+    The ``sources`` field on ``Phi`` is a legacy artifact and is not used by
+    the VM — see the ``Phi`` model docstring and ``VM._step_phi`` for the
+    current branch-value selection semantics.
     """
     # Count incoming edges per node
     incoming: dict[str, list[str]] = {}
@@ -90,15 +104,8 @@ def insert_phi_nodes(upir: UPIR) -> UPIR:
     if not convergence:
         return upir
 
-    # Build a reverse adjacency for ancestor lookup
-    children: dict[str, list[str]] = {}
-    for edge in upir.edges:
-        children.setdefault(edge.from_, []).append(edge.to)
-
     def _find_branch_ancestor(start: str) -> str:
         """BFS backward to find the nearest branch node."""
-        from collections import deque
-
         visited: set[str] = set()
         queue: deque[str] = deque([start])
         while queue:
@@ -111,7 +118,6 @@ def insert_phi_nodes(upir: UPIR) -> UPIR:
                 node = raw if isinstance(raw, UPIRNode) else UPIRNode.model_validate(raw)
                 if node.kind == "branch":
                     return current
-            # Walk backward via incoming edges
             for src in incoming.get(current, []):
                 if src not in visited:
                     queue.append(src)
@@ -123,19 +129,52 @@ def insert_phi_nodes(upir: UPIR) -> UPIR:
     for target_id in convergence:
         branch_source = _find_branch_ancestor(target_id)
         phi_id = f"phi_{target_id}"
+
+        # F2: populate values from the branch node's true_next/false_next
+        values: dict[str, str] = {}
+        if branch_source:
+            branch_raw = upir.nodes.get(branch_source)
+            if branch_raw is not None:
+                branch_node = (
+                    branch_raw
+                    if isinstance(branch_raw, UPIRNode)
+                    else UPIRNode.model_validate(branch_raw)
+                )
+                true_next = getattr(branch_node, "true_next", "")
+                false_next = getattr(branch_node, "false_next", "")
+                if true_next:
+                    values["true"] = true_next
+                if false_next:
+                    values["false"] = false_next
+
         nodes[phi_id] = UPIRNode(
             node_id=phi_id,
             kind="phi",
             branch_source=branch_source,
-            values={},
+            values=values,
         )
+
+        # F1: update branch predecessors' true_next/false_next to point at phi
+        if branch_source:
+            branch_raw = nodes.get(branch_source)
+            if branch_raw is not None:
+                bn = (
+                    branch_raw
+                    if isinstance(branch_raw, UPIRNode)
+                    else UPIRNode.model_validate(branch_raw)
+                )
+                updates: dict[str, str] = {}
+                if getattr(bn, "true_next", "") == target_id:
+                    updates["true_next"] = phi_id
+                if getattr(bn, "false_next", "") == target_id:
+                    updates["false_next"] = phi_id
+                if updates:
+                    nodes[branch_source] = bn.model_copy(update=updates)
+
         # Rewire: predecessors → phi → target
         for src_id in list(convergence[target_id]):
-            # Remove old edge src → target
             edges = [e for e in edges if not (e.from_ == src_id and e.to == target_id)]
-            # Add edge src → phi
             edges.append(Edge(from_=src_id, to=phi_id, kind="sequential"))
-        # Add edge phi → target
         edges.append(Edge(from_=phi_id, to=target_id, kind="sequential"))
 
     return upir.model_copy(update={"nodes": nodes, "edges": edges})

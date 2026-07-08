@@ -324,6 +324,17 @@ class VM:
         )
 
     def _step_phi(self, node: UPIRNode) -> StepResult:
+        """Execute a phi (merge) node via branch-value selection.
+
+        Looks backward through the trace to find the most recent branch event
+        from ``branch_source``.  Uses the ``taken`` field (``"true"`` /
+        ``"false"``) to select the corresponding value from ``values``.  The
+        ``sources`` field is a legacy artifact and is not read here.
+
+        Note: the reverse-trace scan means "most recent execution wins" — if
+        the branch appears multiple times (e.g. in a loop), the last one
+        determines the selected value.
+        """
         node_id = node.node_id
         branch_source = getattr(node, "branch_source", "")
         values: dict[str, str] = getattr(node, "values", {}) or {}
@@ -334,6 +345,16 @@ class VM:
             if event.get("node_id") == branch_source and event.get("kind") == "branch":
                 taken = event.get("taken")
                 break
+
+        # Warn if no branch event found for this phi's source
+        if taken is None and branch_source:
+            import logging
+
+            logging.warning(
+                "phi '%s': no branch event found for branch_source '%s' — selected will be None",
+                node_id,
+                branch_source,
+            )
 
         # Select the value based on which branch was taken
         selected = values.get(taken) if taken and values else None

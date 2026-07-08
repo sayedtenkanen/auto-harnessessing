@@ -111,7 +111,7 @@ src/tracedge/
 - [x] Slice 13: Cost-Aware Scheduler
 - [x] Slice 14: Phi Nodes (SSA merging)
 - [x] Slice 15: Credit Assignment Compiler
-- [x] Slice 16: Full Agent Compiler Loop
+- [ ] Slice 16: Full Agent Compiler Loop (not yet wired into main loop)
 
 ## CI/CD
 
